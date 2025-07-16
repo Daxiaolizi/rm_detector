@@ -34,15 +34,15 @@ include_directories(/usr/local/cuda/include)
 link_directories(/usr/local/cuda/lib64)
 
 # TensorRT
-set(TensorRT_VERSION "8.4.0.6")
+set(TensorRT_VERSION "8.5.1.7")
 
-if (NOT EXISTS "/home/ywj/opt/TensorRT-${TensorRT_VERSION}")
-    MESSAGE(WARNING "/home/ywj/opt/TensorRT-${TensorRT_VERSION} not found.")
+if (NOT EXISTS "/usr/local/TensorRT-${TensorRT_VERSION}")
+    MESSAGE(WARNING "/usr/local/TensorRT-${TensorRT_VERSION} not found.")
 endif ()
 
-include_directories("/home/ywj/opt/TensorRT-${TensorRT_VERSION}/include/")
+include_directories("/usr/local/TensorRT-${TensorRT_VERSION}/include/")
 
-link_directories("/home/ywj/opt/TensorRT-${TensorRT_VERSION}/targets/x86_64-linux-gnu/lib/")
+link_directories("/usr/local/TensorRT-${TensorRT_VERSION}/targets/x86_64-linux-gnu/lib/")
 
 file(GLOB_RECURSE SRCS ${PROJECT_SOURCE_DIR}/utils/*.cpp ${PROJECT_SOURCE_DIR}/utils/*.cu)
 
@@ -109,12 +109,9 @@ add_library(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
         ${catkin_LIBRARIES}
-        ${InferenceEngine_LIBRARIES}
-        ${NGRAPH_LIBRARIES}
         ${OpenCV_LIBS}
         ${TENSORRT_LIB}
         ${CUDA_LIB}
-        ${glog_LIB}
         nvinfer
         cudart
         network

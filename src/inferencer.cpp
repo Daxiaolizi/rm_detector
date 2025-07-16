@@ -68,6 +68,7 @@ void Inferencer::detect(Mat& frame)
   batch_nms(target_objects_, cpu_output_buffer_, conf_thresh_, nms_thresh_);
 
   cudaStreamDestroy(stream);
+
 }
 
 void Inferencer::infer(IExecutionContext& context, cudaStream_t& stream, void** gpu_buffers, float* output,

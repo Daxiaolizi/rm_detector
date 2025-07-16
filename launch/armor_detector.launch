@@ -7,7 +7,7 @@
     <!--    <arg name="camera_name" default="hk_camera"/>-->
     <arg name="camera_name" default="hk_camera"/>
     <arg name="camera_frame" default="camera_optical_frame"/>
-    <!--    <arg name="target_is_red" default="true"/>-->
+   <arg name="target_is_red" default="true"/>
     <!--     left_camera -->
     <node pkg="nodelet" type="nodelet" name="nodelet_manager" args="manager" output="screen"/>
     <!-- nodelet'tag should follow obey the following format -->

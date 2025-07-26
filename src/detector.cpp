@@ -14,7 +14,7 @@ Detector::Detector()
 {
   num_frame_ = 0;
   total_ms_ = 0;
-  tracker_ = new rm_bytetrack::BYTETracker(50, 100);
+//  tracker_ = new rm_bytetrack::BYTETracker(50, 100);
 }
 
 void Detector::onInit()
@@ -36,10 +36,11 @@ void Detector::onInit()
   callback_ = boost::bind(&Detector::dynamicCallback, this, _1);
   server_->setCallback(callback_);
 
-  if (left_camera_)  // TODO: Should we use the subscribeCamera function to receive camera info?
-    camera_sub_ = nh_.subscribe("/hk_camera_right/image_raw/compressed", 1, &Detector::receiveFromCam, this);
-  else
-    camera_sub_ = nh_.subscribe("/hk_camera_left/image_raw/compressed", 1, &Detector::receiveFromCam, this);
+//  if (left_camera_)  // TODO: Should we use the subscribeCamera function to receive camera info?
+//    camera_sub_ = nh_.subscribe("/hk_camera_right/image_raw/compressed", 1, &Detector::receiveFromCam, this);
+//  else
+//    camera_sub_ = nh_.subscribe("/hk_camera_left/image_raw/compressed", 1, &Detector::receiveFromCam, this);
+  camera_sub_ = nh_.subscribe("/hk_stitched_image", 1, &Detector::receiveFromCam, this);
 
   camera_pub_ = nh_.advertise<sensor_msgs::Image>(camera_pub_name_, 1);
 
@@ -48,9 +49,11 @@ void Detector::onInit()
   roi_datas_pub_ = nh_.advertise<rm_msgs::RadarTargetDetectionArray>("rm_radar/roi_datas", 10);
 }
 
-void Detector::receiveFromCam(const sensor_msgs::CompressedImageConstPtr& image)
+void Detector::receiveFromCam(const sensor_msgs::ImageConstPtr& image)
 {
-  if (num_frame_ > 1000)
+    ROS_INFO("Received image from /hk_stitched_image");
+
+    if (num_frame_ > 1000)
   {
     num_frame_ = 0;
     total_ms_ = 0;
@@ -61,6 +64,7 @@ void Detector::receiveFromCam(const sensor_msgs::CompressedImageConstPtr& image)
 
   car_inferencer_.detect(cv_image_->image);
 
+cv::Mat img_clone = cv_image_->image.clone();
   if (!car_inferencer_.target_objects_.empty())
   {
     for (auto& object : car_inferencer_.target_objects_)
@@ -93,21 +97,36 @@ void Detector::receiveFromCam(const sensor_msgs::CompressedImageConstPtr& image)
           (!target_is_red_ && object.class_id >= 6 && object.class_id <= 11))
         continue;
       object.conf = temp;
+        // Adjust armor bounding box coordinates to original image
+        cv::Rect car_rect = get_rect(cv_image_->image, object.bbox);
+        for (auto& armor_object : armor_inferencer_.target_objects_)
+        {
+            cv::Rect armor_rect = get_rect(armor_cls_image, armor_object.bbox);
+            // Translate armor bounding box to original image coordinates
+            armor_rect.x += car_rect.x;
+            armor_rect.y += car_rect.y;
+            armor_object.bbox[0] =  static_cast<float>(armor_rect.x + armor_rect.width / 2.0f);
+            armor_object.bbox[1] =  static_cast<float>(armor_rect.y + armor_rect.height / 2.0f);
+            armor_object.bbox[2] =  static_cast<float>(armor_rect.width);
+            armor_object.bbox[3] =  static_cast<float>(armor_rect.height);
+        }
+        // Draw armor bounding boxes
+        draw_bbox(img_clone, armor_inferencer_.target_objects_);
     }
 
-    std::vector<Object> objects;
-    for (auto& targetObject : car_inferencer_.target_objects_)
-    {
-      Object object;
-      object.rect = get_rect(cv_image_->image, targetObject.bbox);
-      object.label = targetObject.class_id;
-      object.prob = targetObject.conf;
-      objects.push_back(object);
-    }
-    output_stracks_.clear();
-    output_stracks_ = tracker_->update(objects);
+//    std::vector<Object> objects;
+//    for (auto& targetObject : car_inferencer_.target_objects_)
+//    {
+//      Object object;
+//      object.rect = get_rect(cv_image_->image, targetObject.bbox);
+//      object.label = targetObject.class_id;
+//      object.prob = targetObject.conf;
+//      objects.push_back(object);
+//    }
+//    output_stracks_.clear();
+//    output_stracks_ = tracker_->update(objects);
 
-    if (!output_stracks_.empty())
+//    if (!output_stracks_.empty())
       publicMsg();
   }
   if (turn_on_image_)
@@ -117,16 +136,20 @@ void Detector::receiveFromCam(const sensor_msgs::CompressedImageConstPtr& image)
     camera_pub_.publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", img_clone).toImageMsg());
     auto end = std::chrono::system_clock::now();
     total_ms_ = total_ms_ + std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-    for (int i = 0; i < output_stracks_.size(); i++)
+    for (auto& targetObject : car_inferencer_.target_objects_)
     {
-      std::vector<float> tlwh = output_stracks_[i].tlwh_;
-      putText(cv_image_->image, cv::format("%d", output_stracks_[i].track_class_id_), cv::Point(tlwh[0], tlwh[1] - 5),
+//      std::vector<float> tlwh = output_stracks_[i].tlwh_;
+        if (targetObject.class_id == -1 || (target_is_red_ && targetObject.class_id >= 0 && targetObject.class_id <= 5) ||
+                                           (!target_is_red_ && targetObject.class_id >= 6 && targetObject.class_id <= 11))
+            continue;
+        cv::Rect rect = get_rect(cv_image_->image, targetObject.bbox);
+      putText(cv_image_->image, cv::format("%d", targetObject.class_id), cv::Point(rect.x, rect.y - 5),
               0, 0.6, cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
-      rectangle(cv_image_->image, cv::Rect(tlwh[0], tlwh[1], tlwh[2], tlwh[3]), cv::Scalar(255, 0, 0), 2);
+      rectangle(cv_image_->image, rect, cv::Scalar(255, 0, 0), 2);
     }
     putText(cv_image_->image,
-            cv::format("frame: %d fps: %d num: %d", num_frame_, num_frame_ * 1000000 / total_ms_,
-                       output_stracks_.size()),
+            cv::format("frame: %d fps: %d num: %lu", num_frame_, num_frame_ * 1000000 / total_ms_,
+                       car_inferencer_.target_objects_.size()),
             cv::Point(0, 30), 0, 0.6, cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
     camera_pub_track_.publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", cv_image_->image).toImageMsg());
   }
@@ -158,14 +181,14 @@ void Detector::publicMsg()
 {
   rm_msgs::RadarTargetDetectionArray array;
   array.header.stamp = ros::Time::now();
-  for (auto& output_strack : output_stracks_)
+  for (auto& targetObject : car_inferencer_.target_objects_)
   {
-    if ((output_strack.track_class_id_ == -1) ||
-        (target_is_red_ && output_strack.track_class_id_ >= 0 && output_strack.track_class_id_ <= 5) ||
-        (!target_is_red_ && output_strack.track_class_id_ >= 6 && output_strack.track_class_id_ <= 11))
+    if ((targetObject.class_id == -1) ||
+        (target_is_red_ && targetObject.class_id >= 0 && targetObject.class_id <= 5) ||
+        (!target_is_red_ && targetObject.class_id >= 6 && targetObject.class_id <= 11))
       continue;
     rm_msgs::RadarTargetDetection data;
-    data.id = output_strack.track_class_id_;
+    data.id = targetObject.class_id;
     //    std::vector<float> temp;
     //    float temp_w = output_strack.tlwh_[2] / 8.0f;
     //    float temp_h = output_strack.tlwh_[3] / 8.0f;
@@ -173,7 +196,10 @@ void Detector::publicMsg()
     //    temp.push_back(output_strack.tlwh_[1] + 3 * temp_h);
     //    temp.push_back(output_strack.tlwh_[0] + 5 * temp_w);
     //    temp.push_back(output_strack.tlwh_[1] + 5 * temp_h);
-    data.position.data.assign(output_strack.tlbr_.begin(), output_strack.tlbr_.end());
+      cv::Rect rect = get_rect(cv_image_->image, targetObject.bbox);
+      std::vector<float> tlbr = {static_cast<float>(rect.x), static_cast<float>(rect.y),
+                                 static_cast<float>(rect.x + rect.width), static_cast<float>(rect.y + rect.height)};
+    data.position.data.assign(tlbr.begin(), tlbr.end());
     //    data.position.data.push_back(output_strack.tlwh_[0]);
     //    data.position.data.push_back(output_strack.tlwh_[1]);
     //    data.position.data.push_back(output_strack.tlwh_[0] + output_strack.tlwh_[2]);

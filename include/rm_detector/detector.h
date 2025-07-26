@@ -32,7 +32,7 @@ public:
   ~Detector() override;
 
   void onInit() override;
-  void receiveFromCam(const sensor_msgs::CompressedImageConstPtr& image);
+  void receiveFromCam(const sensor_msgs::ImageConstPtr& image);
   void publicMsg();
   void initalizeInfer();
   void dynamicCallback(rm_detector::dynamicConfig& config);
@@ -74,7 +74,7 @@ private:
   unsigned int num_frame_;
   unsigned int total_ms_;
   rm_bytetrack::BYTETracker* tracker_ = nullptr;
-  std::vector<rm_bytetrack::STrack> output_stracks_;
+//  std::vector<rm_bytetrack::STrack> output_stracks_;
 
   ros::Publisher camera_pub_;
   ros::Publisher camera_pub_track_;

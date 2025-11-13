@@ -1,7 +1,6 @@
-/*
- * @Author: Daxiaolizi
- * @Date: 2025-11-09 10:23:16
- */
+//
+// Created by ywj on 24-1-14.
+//
 
 #ifndef RM_RADAR_BYTETRACK_KALMANFILTER_H
 #define RM_RADAR_BYTETRACK_KALMANFILTER_H
@@ -31,4 +30,4 @@ private:
 };
 }  // namespace rm_bytetrack
 
-#endif 
+#endif  // RM_RADAR_BYTETRACK_KALMANFILTER_H

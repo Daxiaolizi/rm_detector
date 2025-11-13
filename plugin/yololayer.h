@@ -1,19 +1,15 @@
 #pragma once
-
-#include <opencv2/opencv.hpp>
+#include "NvInfer.h"
+#include "TensorRT_yolov8/macros.h"
 #include <string>
 #include <vector>
-#include "NvInfer.h"
-#include "Infer_yolov12/macros.h"
-
 namespace nvinfer1 {
 class API YoloLayerPlugin : public IPluginV2IOExt {
    public:
     YoloLayerPlugin(int classCount, int numberofpoints, float confthreshkeypoints, int netWidth, int netHeight,
-                    int maxOut, bool is_segmentation, bool is_pose, bool is_obb, const int* strides, int stridesLength);
+                    int maxOut, bool is_segmentation, bool is_pose, const int* strides, int stridesLength);
 
     YoloLayerPlugin(const void* data, size_t length);
-
     ~YoloLayerPlugin();
 
     int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
@@ -69,7 +65,6 @@ class API YoloLayerPlugin : public IPluginV2IOExt {
    private:
     void forwardGpu(const float* const* inputs, float* output, cudaStream_t stream, int mYoloV8netHeight,
                     int mYoloV8NetWidth, int batchSize);
-
     int mThreadCount = 256;
     const char* mPluginNamespace;
     int mClassCount;
@@ -80,7 +75,6 @@ class API YoloLayerPlugin : public IPluginV2IOExt {
     int mMaxOutObject;
     bool is_segmentation_;
     bool is_pose_;
-    bool is_obb_;
     int* mStrides;
     int mStridesLength;
 };
@@ -88,7 +82,6 @@ class API YoloLayerPlugin : public IPluginV2IOExt {
 class API YoloPluginCreator : public IPluginCreator {
    public:
     YoloPluginCreator();
-
     ~YoloPluginCreator() override = default;
 
     const char* getPluginName() const TRT_NOEXCEPT override;
@@ -112,6 +105,5 @@ class API YoloPluginCreator : public IPluginCreator {
     static PluginFieldCollection mFC;
     static std::vector<PluginField> mPluginAttributes;
 };
-
 REGISTER_TENSORRT_PLUGIN(YoloPluginCreator);
 }  // namespace nvinfer1

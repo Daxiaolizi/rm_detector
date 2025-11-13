@@ -1,0 +1,13 @@
+left_camera: false
+car_class: 1
+car_batch_size: 1
+car_input_h: 800
+car_input_w: 800
+armor_class: 12
+armor_batch_size: 1
+armor_input_h: 640
+armor_input_w: 640
+car_conf_thresh: 0.1
+car_nms_thresh: 0.7
+armor_conf_thresh: 0.5
+armor_nms_thresh: 0.45

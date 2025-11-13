@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(rm_detector)
+project(rm_detector_v8)
 
 if (NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
     set(CMAKE_CUDA_ARCHITECTURES 70 75 80)
@@ -10,10 +10,9 @@ add_definitions(-DAPI_EXPORTS)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_BUILD_TYPE Debug)
 
-
 # CUDA
 option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
-set(CMAKE_CUDA_COMPILER /usr/local/cuda-11.8/bin/nvcc)
+set(CMAKE_CUDA_COMPILER /usr/local/cuda/bin/nvcc)
 enable_language(CUDA)
 
 find_package(catkin REQUIRED COMPONENTS
@@ -26,30 +25,35 @@ find_package(catkin REQUIRED COMPONENTS
         pluginlib
         rm_msgs
 )
-
+#find_package(OpenCV REQUIRED)
+#find_package(OpenCV 4 REQUIRED)
 find_package(OpenCV 4 REQUIRED)
 
-include_directories(/usr/local/cuda-11.8/include)
+include_directories(/usr/local/cuda/include)
 
-link_directories(/usr/local/cuda-11.8/lib64)
+link_directories(/usr/local/cuda/lib64)
 
-#TensorRT
-set(TensorRT_VERSION "8.5.1.7")
+# TensorRT
+set(TensorRT_VERSION "8.4.0.6")
 
-if (NOT EXISTS "/usr/local/TensorRT-${TensorRT_VERSION}")
-    MESSAGE(WARNING "/usr/local/TensorRT-${TensorRT_VERSION} not found.")
+if (NOT EXISTS "/home/ywj/opt/TensorRT-${TensorRT_VERSION}")
+    MESSAGE(WARNING "/home/ywj/opt/TensorRT-${TensorRT_VERSION} not found.")
 endif ()
 
-include_directories("/usr/local/TensorRT-${TensorRT_VERSION}/include/")
-link_directories("/usr/local/TensorRT-${TensorRT_VERSION}/targets/x86_64-linux-gnu/lib/")
+include_directories("/home/ywj/opt/TensorRT-${TensorRT_VERSION}/include/")
+
+link_directories("/home/ywj/opt/TensorRT-${TensorRT_VERSION}/targets/x86_64-linux-gnu/lib/")
+
+#file(GLOB_RECURSE SRCS /home/ywj/catkin_ws/src/rm_detector_v8s_p2/utils/*.cpp /home/ywj/catkin_ws/src/rm_detector_v8s_p2/utils/*.cu)
 
 file(GLOB_RECURSE PLUGIN_SRCS plugin/yololayer.cu)
 
 add_library(network_ SHARED ${PLUGIN_SRCS})
 
-file(GLOB_RECURSE SRCS src/Infer_yolov12/*.cpp src/Infer_yolov12/*.cu)
+file(GLOB_RECURSE SRCS src/TensorRT_yolov8/*.cpp src/TensorRT_yolov8/*.cu)
 
 add_library(TRTx_ SHARED ${SRCS})
+#add_library(TRTx_ SHARED ${SRCS})
 
 target_link_libraries(network_
         nvinfer
@@ -71,35 +75,38 @@ generate_dynamic_reconfigure_options(
         cfg/dynamic.cfg
 )
 
-
-
 catkin_package(
- INCLUDE_DIRS include/
-
- LIBRARIES  ${PROJECT_NAME}
- CATKIN_DEPENDS cv_bridge dynamic_reconfigure nodelet rm_msgs roscpp rospy std_msgs
- 
- DEPENDS system_lib
+        INCLUDE_DIRS
+        include
+        LIBRARIES
+        CATKIN_DEPENDS
+        roscpp
+        nodelet
+        dynamic_reconfigure
+        std_msgs
+        cv_bridge
+        rm_msgs
+        LIBRARIES ${PROJECT_NAME}
 )
 
-if (NOT EXISTS "/usr/local/cuda-11.8/include")
-    MESSAGE(WARNING "/usr/local/cuda-11.8/include not found.")
+if (NOT EXISTS "/usr/local/cuda/include")
+    MESSAGE(WARNING "/usr/local/cuda/include not found.")
 endif ()
 
 include_directories(
-include
-  ${catkin_INCLUDE_DIRS}
-  "/usr/local/cuda-11.8/include"
-  /usr/include/eigen3
+        include
+        ${catkin_INCLUDE_DIRS}
+        "/usr/local/cuda/include"
+        /usr/include/eigen3
 )
 
-add_library(${PROJECT_NAME} 
-src/rm_detector/detector.cpp
-src/rm_detector/inferencer.cpp
-src/Infer_yolov12/block.cpp
-src/Infer_yolov12/model.cpp
-src/Infer_yolov12/postprocess.cpp
-
+add_library(${PROJECT_NAME}
+        src/detector.cpp
+        src/inferencer.cpp
+        src/rm_bytetrack/BYTETracker.cpp
+        src/rm_bytetrack/kalmanFilter.cpp
+        src/rm_bytetrack/lapjv.cpp
+        src/rm_bytetrack/STrack.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}

@@ -1,6 +1,7 @@
-//
-// Created by yamabuki on 2022/4/18.
-//
+/*
+ * @Author: Daxiaolizi
+ * @Date: 2025-11-06 17:15:53
+ */
 #pragma once
 #include <iostream>
 #include <opencv2/opencv.hpp>
@@ -8,105 +9,88 @@
 #include <cv_bridge/cv_bridge.h>
 #include <string>
 #include <vector>
-#include <inference_engine.hpp>
-#include "std_msgs/Float32MultiArray.h"
-#include "dynamic_reconfigure/server.h"
+#include <std_msgs/Float32MultiArray.h>
+#include "rm_msgs/RadarTargetDetection.h"
+#include "rm_msgs/RadarTargetDetectionArray.h"
+#include <dynamic_reconfigure/server.h>
 #include "rm_detector/dynamicConfig.h"
-#include "sensor_msgs/CameraInfo.h"
-#include "nodelet/nodelet.h"
+#include <sensor_msgs/CompressedImage.h>
+#include <nodelet/nodelet.h>
 #include <pluginlib/class_list_macros.h>
-
-struct Object
-{
-  cv::Rect_<float> rect;
-  int label;
-  float prob;
-};
-
-struct GridAndStride
-{
-  int grid0;
-  int grid1;
-  int stride;
-};
+#include "rm_detector/inferencer.h"
+#include "rm_bytetrack/BYTETracker.h"
+#include "Infer_yolov12/types.h"
+//接收圖像
+//硬编码Logger glogger
+// #define IMAGE_CENTER_X 1536
+// #define IMAGE_CENTER_Y 1024
 
 namespace rm_detector
-{
+{ 
+
 class Detector : public nodelet::Nodelet
-{
+{ 
 public:
-  Detector();
-  virtual ~Detector();
-  void onInit() override;
-  void receiveFromCam(const sensor_msgs::ImageConstPtr& image);
-  void staticResize(cv::Mat& img);
-  void blobFromImage(cv::Mat& img);
-  void generateGridsAndStride(const int target_w, const int target_h);
-  void generateYoloxProposals(std::vector<GridAndStride> grid_strides, const float* feat_ptr, float prob_threshold,
-                              std::vector<Object>& proposals);
-  inline float intersectionArea(const Object& a, const Object& b);
-  void qsortDescentInplace(std::vector<Object>& faceobjects, int left, int right);
-  void qsortDescentInplace(std::vector<Object>& proposals);
-  void nmsSortedBboxes(const std::vector<Object>& faceobjects, std::vector<int>& picked, float nms_threshold);
-  void decodeOutputs(const float* prob, const int img_w, const int img_h);
-  void selectTargetColor(std::vector<Object>& proposals,std::vector<cv::Mat> &color_filtrated_roi_vec);
-  void contoursProcess(std::vector<Object>& proposals,std::vector<cv::Mat> &color_filtrated_roi_vec);
-  void drawObjects(const cv::Mat& bgr);
-  void mainFuc(cv_bridge::CvImagePtr& image_ptr);
-  void initalizeInfer();
-  void dynamicCallback(rm_detector::dynamicConfig& config);
-  cv_bridge::CvImagePtr cv_image_;
-  InferenceEngine::InferRequest infer_request_;
-  InferenceEngine::MemoryBlob::Ptr mblob_;
-  const float* net_pred_;
-  std::vector<GridAndStride> grid_strides_;
-  float nms_thresh_;
-  float bbox_conf_thresh_;
-  std_msgs::Float32MultiArray roi_data_;
-  std::vector<cv::Point2f> roi_point_vec_;
-  cv::Point2f roi_data_point_r_;
-  cv::Point2f roi_data_point_l_;
-  cv::Mat_<float> discoeffs_;
-  cv::Mat_<float> camera_matrix_;
-  std::vector<float> discoeffs_vec_;
-  std::vector<float> camera_matrix_vec_;
-  std::vector<Object> objects_;
-  std::string model_path_;
-  int origin_img_w_;
-  int origin_img_h_;
-  float scale_;
-  bool turn_on_image_;
-  dynamic_reconfigure::Server<rm_detector::dynamicConfig> server_;
-  dynamic_reconfigure::Server<rm_detector::dynamicConfig>::CallbackType callback_;
-  std::string nodelet_name_;
-  std::string camera_pub_name_;
-  std::string roi_data1_name_;
-  std::string roi_data2_name_;
-  std::string roi_data3_name_;
-  std::string roi_data4_name_;
-  std::string roi_data5_name_;
-  bool target_is_red_;
-  bool target_is_blue_;
-  cv::Mat roi_picture_;
-  std::vector<cv::Mat> roi_picture_vec_;
-  std::vector<cv::Mat> roi_picture_split_vec_;
-  float ratio_of_pixels_;
-  int  counter_of_pixel_;
-  int pixels_thresh_;
-  std::vector<Object> filter_objects_;
-  int binary_threshold_;
-  float aspect_ratio_;
+Detector();
+~Detector() override;
+
+void onInit() override;
+void receiveFromCam(const sensor_msgs::CompressedImageConstPtr& image);
+void publicMsg();
+void initializeInfer();
+void dynamicCallback(rm_detector::dynamicConfig& config);
+
+cv_bridge::CvImagePtr cv_image_;
+
+//infer settings
+std::vector<cv::Point2f> roi_point_vec;
+cv::Point2f roi_data_point_r_;
+cv::Point2f roi_data_point_l_;
+
+std::string car_model_path_;
+std::string armor_model_path_;
+
+bool turn_on_image_;
+dynamic_reconfigure::Server<rm_detector::dynamicConfig>* server_;
+dynamic_reconfigure::Server<rm_detector::dynamicConfig>::CallbackType callback_;
+
+std::string camera_pub_name_;
+std::string nodelet_name_;
+
+std::string roi_data1_name_;//our hero
+std::string roi_data2_name_;//our engineer
+std::string roi_data3_name_;//our standard
+std::string roi_data4_name_;//our standard
+std::string roi_data5_name_;//our sentry
+std::string roi_data6_name_;//hero
+std::string roi_data7_name_;//engineer
+std::string roi_data8_name_;//standard
+std::string roi_data9_name_;//standard
+std::string roi_data10_name_;//sentry
+
+bool target_is_red_;
+bool left_camera_;
+
+Inferencer car_inferencer_;
+Inferencer armor_inferencer_;
+
+ros::NodeHandle nh_;
+Logger gLogger_;
 
 private:
-  ros::NodeHandle nh_;
-  ros::Publisher camera_pub_;
-  ros::Publisher camera_pub2_;
-  ros::Subscriber camera_sub_;
-  std::vector<ros::Publisher> roi_data_pub_vec;
-  ros::Publisher roi_data_pub1_;
-  ros::Publisher roi_data_pub2_;
-  ros::Publisher roi_data_pub3_;
-  ros::Publisher roi_data_pub4_;
-  ros::Publisher roi_data_pub5_;
+static constexpr int IMAGE_CENTER_X = 1536;
+static constexpr int IMAGE_CENTER_Y = 1024;
+unsigned int num_frame_;
+unsigned int total_ms_;
+rm_bytetrack::BYTETracker *tracker_ = nullptr;
+std::vector<rm_bytetrack::STrack> output_stracks_;
+
+ros::Publisher camera_pub_;
+ros::Publisher camera_pub_track_;
+ros::Subscriber camera_sub_;
+ros::Publisher roi_datas_pub_;
+
+rm_msgs::RadarTargetDetectionArray roi_array_{};
 };
-}  // namespace rm_detector
+
+}

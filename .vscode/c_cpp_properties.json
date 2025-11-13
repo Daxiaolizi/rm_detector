@@ -1,0 +1,31 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/dxliz/radar_ws/devel/include/**",
+        "/home/dxliz/rm_ws/devel/include/**",
+        "/opt/ros/noetic/include/**",
+        "/home/dxliz/rm_ws/src/armor_processor/include/**",
+        "/home/dxliz/radar_ws/src/hk_camera/include/**",
+        "/home/dxliz/rm_ws/src/rm_control/rm_common/include/**",
+        "/home/dxliz/radar_ws/src/rm_detector/include/**",
+        "/home/dxliz/rm_ws/src/rm_visplugin/rm_digtialimg_proc/include/**",
+        "/home/dxliz/rm_ws/src/rm_forecast/include/**",
+        "/home/dxliz/rm_ws/src/rm_control/rm_hw/include/**",
+        "/home/dxliz/rm_ws/src/rm_visplugin/rm_pose_solver/include/**",
+        "/home/dxliz/rm_ws/src/rm_vision/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
